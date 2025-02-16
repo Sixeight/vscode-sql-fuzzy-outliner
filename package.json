@@ -1,24 +1,20 @@
 {
   "name": "sql-fuzzy-outliner",
   "displayName": "SQL Fuzzy Outliner",
-  "description": "",
+  "description": "A fuzzy outliner for SQL",
+  "publisher": "Sixeight",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.97.0"
+    "vscode": "^1.96.0"
   },
   "categories": [
-    "Other"
+    "Programming Languages"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:sql"
+  ],
   "main": "./out/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "sql-fuzzy-outliner.helloWorld",
-        "title": "Hello World"
-      }
-    ]
-  },
+  "contributes": {},
   "scripts": {
     "vscode:prepublish": "pnpm run compile",
     "compile": "tsc -p ./",
