@@ -3,6 +3,11 @@
   "displayName": "SQL Fuzzy Outliner",
   "description": "A fuzzy outliner for SQL",
   "publisher": "Sixeight",
+  "homepage": "https://github.com/Sixeight/sql-fuzzy-outliner",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sixeight/sql-fuzzy-outliner.git"
+  },
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.96.0"
