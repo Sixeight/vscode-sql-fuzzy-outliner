@@ -1,6 +1,10 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { GraphQLDocumentSymbolProvider } from './graphqlOutliner';
+import { GraphQLDefinitionProvider } from './graphqlDefinitionProvider';
+import { GraphQLReferenceProvider } from './graphqlReferenceProvider';
+import { GraphQLFallbackProvider } from './graphqlFallbackProvider';
 
 class SQLDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
   private pattern =
@@ -31,7 +35,7 @@ class SQLDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
       const selectionRange = range;
 
       if (match[1]) {
-        // CREATE TABLE または TYPE の場合
+        // For CREATE TABLE or TYPE
         const operation = match[1].trim().toUpperCase();
         symbols.push(
           new vscode.DocumentSymbol(
@@ -43,7 +47,7 @@ class SQLDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
           )
         );
       } else {
-        // SELECT/INSERT/UPDATE/DELETE の場合
+        // For SELECT/INSERT/UPDATE/DELETE
         const tableName = (
           match[3] ||
           match[4] ||
@@ -76,10 +80,53 @@ class SQLDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  // Define GraphQL file type patterns
+  const graphqlDocumentSelector = [
+    { language: 'graphql', scheme: 'file' },
+    { pattern: '**/*.graphql', scheme: 'file' },
+    { pattern: '**/*.gql', scheme: 'file' },
+    { pattern: '**/*.graphqls', scheme: 'file' },
+  ];
+
+  // Register SQL outliner
   context.subscriptions.push(
     vscode.languages.registerDocumentSymbolProvider(
       [{ language: 'sql' }],
       new SQLDocumentSymbolProvider()
+    )
+  );
+
+  // Register GraphQL outliner
+  context.subscriptions.push(
+    vscode.languages.registerDocumentSymbolProvider(
+      graphqlDocumentSelector,
+      new GraphQLDocumentSymbolProvider()
+    )
+  );
+
+  // Create GraphQL definition and reference providers
+  const definitionProvider = new GraphQLDefinitionProvider();
+  const referenceProvider = new GraphQLReferenceProvider();
+
+  // Register reference provider
+  context.subscriptions.push(
+    vscode.languages.registerReferenceProvider(
+      graphqlDocumentSelector,
+      referenceProvider
+    )
+  );
+
+  // Create fallback provider (show references if definition not found)
+  const fallbackProvider = new GraphQLFallbackProvider(
+    definitionProvider,
+    referenceProvider
+  );
+
+  // Register fallback provider as definition provider
+  context.subscriptions.push(
+    vscode.languages.registerDefinitionProvider(
+      graphqlDocumentSelector,
+      fallbackProvider
     )
   );
 }

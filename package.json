@@ -1,25 +1,48 @@
 {
   "name": "sql-fuzzy-outliner",
   "displayName": "SQL Fuzzy Outliner",
-  "description": "A fuzzy outliner for SQL",
+  "description": "A fuzzy outliner for SQL and GraphQL with definition/reference jump support",
   "publisher": "Sixeight",
   "homepage": "https://github.com/Sixeight/sql-fuzzy-outliner",
   "repository": {
     "type": "git",
     "url": "https://github.com/Sixeight/sql-fuzzy-outliner.git"
   },
-  "version": "0.0.1",
+  "version": "0.4.0",
   "engines": {
     "vscode": "^1.96.0"
   },
   "categories": [
     "Programming Languages"
   ],
+  "keywords": [
+    "sql",
+    "graphql",
+    "outline",
+    "navigation",
+    "definition"
+  ],
   "activationEvents": [
-    "onLanguage:sql"
+    "onLanguage:sql",
+    "onLanguage:graphql"
   ],
   "main": "./out/extension.js",
-  "contributes": {},
+  "contributes": {
+    "languages": [
+      {
+        "id": "graphql",
+        "extensions": [
+          ".graphql",
+          ".gql",
+          ".graphqls"
+        ],
+        "aliases": [
+          "GraphQL",
+          "graphql"
+        ]
+      }
+    ]
+  },
   "scripts": {
     "vscode:prepublish": "pnpm run compile",
     "compile": "tsc -p ./",
@@ -27,6 +50,9 @@
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src",
     "test": "vscode-test"
+  },
+  "dependencies": {
+    "graphql": "^16.7.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.97.0",
