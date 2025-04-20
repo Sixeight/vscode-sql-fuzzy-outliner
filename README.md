@@ -51,9 +51,8 @@ This extension does not contribute any customizable settings.
 
 ### 0.4.0
 
-- Added fuzzy outline support for SQL files (`.sql`), including `CREATE TABLE`, `CREATE TYPE`, and basic CRUD operations
-- Registered `SQLDocumentSymbolProvider` for SQL language
 - Updated extension version to `0.4.0`
+- Improved performance of GraphQL support
 
 ### 0.3.0
 
