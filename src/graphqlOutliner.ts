@@ -39,30 +39,6 @@ export class GraphQLDocumentSymbolProvider
     FieldWithArguments: vscode.SymbolKind.Method,
   };
 
-  // Cache: stores symbols per document URI and version
-  private symbolCache = new Map<
-    string,
-    { version: number; symbols: vscode.DocumentSymbol[] }
-  >();
-  // Mapping of opening to closing bracket positions
-  private bracketMap = new Map<number, number>();
-
-  // Pre-generate bracket mapping from the entire text
-  private buildBracketMap(text: string): void {
-    this.bracketMap.clear();
-    const stack: number[] = [];
-    for (let i = 0; i < text.length; i++) {
-      if (text[i] === '{') {
-        stack.push(i);
-      } else if (text[i] === '}') {
-        const open = stack.pop();
-        if (open !== undefined) {
-          this.bracketMap.set(open, i);
-        }
-      }
-    }
-  }
-
   // Utility: create a DocumentSymbol given start/end offsets
   private createSymbol(
     document: vscode.TextDocument,
@@ -84,59 +60,6 @@ export class GraphQLDocumentSymbolProvider
     );
     const selectionRange = new vscode.Range(selStartPos, selEndPos);
     return new vscode.DocumentSymbol(name, detail, kind, range, selectionRange);
-  }
-
-  // Extract common logic for finding definitions and creating symbols
-  private extractDefinitions(
-    document: vscode.TextDocument,
-    text: string,
-    pattern: RegExp,
-    symbols: vscode.DocumentSymbol[],
-    options: {
-      getName: (match: RegExpExecArray) => string;
-      getDetail: (match: RegExpExecArray) => string;
-      getSymbolKind: (match: RegExpExecArray) => vscode.SymbolKind;
-      addChildren?: (
-        document: vscode.TextDocument,
-        text: string,
-        parentSymbol: vscode.DocumentSymbol,
-        startIndex: number,
-        endIndex: number,
-        match: RegExpExecArray
-      ) => void;
-    }
-  ) {
-    pattern.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = pattern.exec(text)) !== null) {
-      const name = options.getName(match);
-      const detail = options.getDetail(match);
-      const blockStartIndex = text.indexOf('{', match.index);
-      const blockEndIndex =
-        blockStartIndex === -1
-          ? match.index + match[0].length - 1
-          : this.findMatchingBracket(text, blockStartIndex);
-      const kind = options.getSymbolKind(match);
-      const symbol = this.createSymbol(
-        document,
-        name,
-        detail,
-        kind,
-        match.index,
-        blockEndIndex + 1
-      );
-      if (options.addChildren && blockStartIndex !== -1) {
-        options.addChildren(
-          document,
-          text,
-          symbol,
-          blockStartIndex + 1,
-          blockEndIndex,
-          match
-        );
-      }
-      symbols.push(symbol);
-    }
   }
 
   // Method to provide document symbols (AST parse version)
@@ -379,10 +302,5 @@ export class GraphQLDocumentSymbolProvider
       }
       parent.children.push(childSymbol);
     }
-  }
-
-  // Find the matching closing brace
-  private findMatchingBracket(text: string, openBraceIndex: number): number {
-    return this.bracketMap.get(openBraceIndex) ?? openBraceIndex;
   }
 }
