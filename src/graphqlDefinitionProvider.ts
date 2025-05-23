@@ -2,18 +2,14 @@ import * as vscode from 'vscode';
 import { parse, Kind, DocumentNode } from 'graphql';
 
 export class GraphQLDefinitionProvider implements vscode.DefinitionProvider {
-  // Cache of all GraphQL file type definitions and locations
-  private typeDefinitionsCache = new Map<
+  // Unified cache for all definitions
+  private definitionsCache = new Map<
     string,
-    Map<string, vscode.Location>
-  >();
-  private fieldDefinitionsCache = new Map<
-    string,
-    Map<string, vscode.Location>
-  >();
-  private fragmentDefinitionsCache = new Map<
-    string,
-    Map<string, vscode.Location>
+    {
+      typeDefinitions: Map<string, vscode.Location>;
+      fieldDefinitions: Map<string, vscode.Location>;
+      fragmentDefinitions: Map<string, vscode.Location>;
+    }
   >();
 
   constructor() {
@@ -71,18 +67,16 @@ export class GraphQLDefinitionProvider implements vscode.DefinitionProvider {
     const currentUri = currentDocument.uri.toString();
 
     // 1. First, prioritize definitions in the current file
-    if (this.typeDefinitionsCache.has(currentUri)) {
-      const currentFileTypes = this.typeDefinitionsCache.get(currentUri)!;
-      if (currentFileTypes.has(typeName)) {
-        locations.push(currentFileTypes.get(typeName)!);
-        return locations; // Return the ones found in the same file first
-      }
+    const currentFileCache = this.definitionsCache.get(currentUri);
+    if (currentFileCache?.typeDefinitions.has(typeName)) {
+      locations.push(currentFileCache.typeDefinitions.get(typeName)!);
+      return locations; // Return the ones found in the same file first
     }
 
     // 2. If none found in the same file, search other files
-    for (const [uri, typeMap] of this.typeDefinitionsCache) {
-      if (uri !== currentUri && typeMap.has(typeName)) {
-        locations.push(typeMap.get(typeName)!);
+    for (const [uri, cacheEntry] of this.definitionsCache) {
+      if (uri !== currentUri && cacheEntry.typeDefinitions.has(typeName)) {
+        locations.push(cacheEntry.typeDefinitions.get(typeName)!);
       }
     }
 
@@ -106,18 +100,16 @@ export class GraphQLDefinitionProvider implements vscode.DefinitionProvider {
     const currentUri = document.uri.toString();
 
     // 1. First, prioritize definitions in the current file (fields)
-    if (this.fieldDefinitionsCache.has(currentUri)) {
-      const currentFileFields = this.fieldDefinitionsCache.get(currentUri)!;
-      if (currentFileFields.has(fieldKey)) {
-        locations.push(currentFileFields.get(fieldKey)!);
-        return locations; // Return the ones found in the same file first (fields)
-      }
+    const currentFileCache = this.definitionsCache.get(currentUri);
+    if (currentFileCache?.fieldDefinitions.has(fieldKey)) {
+      locations.push(currentFileCache.fieldDefinitions.get(fieldKey)!);
+      return locations; // Return the ones found in the same file first (fields)
     }
 
     // 2. If none found in the same file, search other files (fields)
-    for (const [uri, fieldMap] of this.fieldDefinitionsCache) {
-      if (uri !== currentUri && fieldMap.has(fieldKey)) {
-        locations.push(fieldMap.get(fieldKey)!);
+    for (const [uri, cacheEntry] of this.definitionsCache) {
+      if (uri !== currentUri && cacheEntry.fieldDefinitions.has(fieldKey)) {
+        locations.push(cacheEntry.fieldDefinitions.get(fieldKey)!);
       }
     }
 
@@ -133,19 +125,16 @@ export class GraphQLDefinitionProvider implements vscode.DefinitionProvider {
     const currentUri = currentDocument.uri.toString();
 
     // 1. First, prioritize definitions in the current file and return
-    if (this.fragmentDefinitionsCache.has(currentUri)) {
-      const currentFileFragments =
-        this.fragmentDefinitionsCache.get(currentUri)!;
-      if (currentFileFragments.has(fragmentName)) {
-        locations.push(currentFileFragments.get(fragmentName)!);
-        return locations; // Return the ones found in the same file first (fragments)
-      }
+    const currentFileCache = this.definitionsCache.get(currentUri);
+    if (currentFileCache?.fragmentDefinitions.has(fragmentName)) {
+      locations.push(currentFileCache.fragmentDefinitions.get(fragmentName)!);
+      return locations; // Return the ones found in the same file first (fragments)
     }
 
     // 2. If none found in the same file, search other files (fragments)
-    for (const [uri, fragmentMap] of this.fragmentDefinitionsCache) {
-      if (uri !== currentUri && fragmentMap.has(fragmentName)) {
-        locations.push(fragmentMap.get(fragmentName)!);
+    for (const [uri, cacheEntry] of this.definitionsCache) {
+      if (uri !== currentUri && cacheEntry.fragmentDefinitions.has(fragmentName)) {
+        locations.push(cacheEntry.fragmentDefinitions.get(fragmentName)!);
       }
     }
 
@@ -212,9 +201,11 @@ export class GraphQLDefinitionProvider implements vscode.DefinitionProvider {
       console.error('Failed to parse GraphQL document', error);
       return;
     }
-    const typeDefinitions = new Map<string, vscode.Location>();
-    const fieldDefinitions = new Map<string, vscode.Location>();
-    const fragmentDefinitions = new Map<string, vscode.Location>();
+    const cacheEntry = {
+      typeDefinitions: new Map<string, vscode.Location>(),
+      fieldDefinitions: new Map<string, vscode.Location>(),
+      fragmentDefinitions: new Map<string, vscode.Location>(),
+    };
 
     for (const def of ast.definitions) {
       if (
@@ -230,7 +221,7 @@ export class GraphQLDefinitionProvider implements vscode.DefinitionProvider {
         if (loc) {
           const start = document.positionAt(loc.start);
           const end = document.positionAt(loc.end);
-          typeDefinitions.set(
+          cacheEntry.typeDefinitions.set(
             typeName,
             new vscode.Location(document.uri, new vscode.Range(start, end))
           );
@@ -244,7 +235,7 @@ export class GraphQLDefinitionProvider implements vscode.DefinitionProvider {
             }
             const fStart = document.positionAt(fieldLoc.start);
             const fEnd = document.positionAt(fieldLoc.end);
-            fieldDefinitions.set(
+            cacheEntry.fieldDefinitions.set(
               `${typeName}.${fieldName}`,
               new vscode.Location(document.uri, new vscode.Range(fStart, fEnd))
             );
@@ -256,16 +247,14 @@ export class GraphQLDefinitionProvider implements vscode.DefinitionProvider {
         if (loc) {
           const start = document.positionAt(loc.start);
           const end = document.positionAt(loc.end);
-          fragmentDefinitions.set(
+          cacheEntry.fragmentDefinitions.set(
             fragName,
             new vscode.Location(document.uri, new vscode.Range(start, end))
           );
         }
       }
     }
-    this.typeDefinitionsCache.set(uri, typeDefinitions);
-    this.fieldDefinitionsCache.set(uri, fieldDefinitions);
-    this.fragmentDefinitionsCache.set(uri, fragmentDefinitions);
+    this.definitionsCache.set(uri, cacheEntry);
   }
 
   // Determine if a document is a GraphQL file
