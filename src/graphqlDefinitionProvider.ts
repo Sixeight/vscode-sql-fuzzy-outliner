@@ -133,7 +133,10 @@ export class GraphQLDefinitionProvider implements vscode.DefinitionProvider {
 
     // 2. If none found in the same file, search other files (fragments)
     for (const [uri, cacheEntry] of this.definitionsCache) {
-      if (uri !== currentUri && cacheEntry.fragmentDefinitions.has(fragmentName)) {
+      if (
+        uri !== currentUri &&
+        cacheEntry.fragmentDefinitions.has(fragmentName)
+      ) {
         locations.push(cacheEntry.fragmentDefinitions.get(fragmentName)!);
       }
     }

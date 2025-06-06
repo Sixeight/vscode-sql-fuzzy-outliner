@@ -5,6 +5,9 @@ import { GraphQLDocumentSymbolProvider } from './graphqlOutliner';
 import { GraphQLDefinitionProvider } from './graphqlDefinitionProvider';
 import { GraphQLReferenceProvider } from './graphqlReferenceProvider';
 import { GraphQLFallbackProvider } from './graphqlFallbackProvider';
+import { SQLDefinitionProvider } from './sqlDefinitionProvider';
+import { SQLReferenceProvider } from './sqlReferenceProvider';
+import { SQLFallbackProvider } from './sqlFallbackProvider';
 
 class SQLDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
   private pattern =
@@ -88,12 +91,51 @@ export function activate(context: vscode.ExtensionContext) {
     { pattern: '**/*.graphqls', scheme: 'file' },
   ];
 
+  // Define SQL file type patterns
+  const sqlDocumentSelector = [{ language: 'sql' }];
+
   // Register SQL outliner
   context.subscriptions.push(
     vscode.languages.registerDocumentSymbolProvider(
-      [{ language: 'sql' }],
+      sqlDocumentSelector,
       new SQLDocumentSymbolProvider()
     )
+  );
+
+  // Create SQL definition and reference providers
+  const sqlDefinitionProvider = new SQLDefinitionProvider();
+  const sqlReferenceProvider = new SQLReferenceProvider();
+
+  // Register SQL reference provider
+  context.subscriptions.push(
+    vscode.languages.registerReferenceProvider(
+      sqlDocumentSelector,
+      sqlReferenceProvider
+    )
+  );
+
+  // Create SQL fallback provider (show references if definition not found)
+  const sqlFallbackProvider = new SQLFallbackProvider(
+    sqlDefinitionProvider,
+    sqlReferenceProvider
+  );
+
+  // Register SQL fallback provider as definition provider
+  context.subscriptions.push(
+    vscode.languages.registerDefinitionProvider(
+      sqlDocumentSelector,
+      sqlFallbackProvider
+    )
+  );
+
+  // Clear SQL caches when documents change
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      if (event.document.languageId === 'sql') {
+        sqlDefinitionProvider.clearCache(event.document);
+        sqlReferenceProvider.clearCache(event.document);
+      }
+    })
   );
 
   // Register GraphQL outliner
