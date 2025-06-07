@@ -51,7 +51,7 @@ export class SQLFallbackProvider implements vscode.DefinitionProvider {
               targetUri: loc.uri,
               targetRange: loc.range,
               targetSelectionRange: loc.range,
-            } as vscode.LocationLink)
+            }) as vscode.LocationLink
         );
         return locationLinks;
       }
